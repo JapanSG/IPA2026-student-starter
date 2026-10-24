@@ -1,3 +1,6 @@
+from app.core import process_request_file
+
+
 def validate_webex_envelope(
     mentioned_people,
     attachment_path,
@@ -33,7 +36,4 @@ def handle_webex_request(
     result = validate_webex_envelope(mentioned_people, attachment_path, bot_person_id)
     if result:
         return result
-    return     {
-      "status": "ok",
-      "result": "accepted"
-    }
+    return process_request_file(attachment_path)

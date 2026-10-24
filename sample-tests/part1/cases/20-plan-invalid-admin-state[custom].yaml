@@ -1,0 +1,6 @@
+target: core
+request: 20-plan-invalid-admin-state[custom].yaml
+
+expected:
+  status: error
+  result: invalid_admin_state

@@ -1,0 +1,6 @@
+target: core
+request: 21-status-invalid-admin-state[custom].yaml
+
+expected:
+  status: ok
+  result: accepted

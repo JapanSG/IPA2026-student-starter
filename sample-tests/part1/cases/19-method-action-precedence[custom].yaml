@@ -1,0 +1,6 @@
+target: core
+request: 19-method-action-precedence[custom].yaml
+
+expected:
+  status: error
+  result: invalid_action

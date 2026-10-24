@@ -1,0 +1,6 @@
+target: core
+request: 18-status-ignores-extra-fields[custom].yaml
+
+expected:
+  status: ok
+  result: accepted

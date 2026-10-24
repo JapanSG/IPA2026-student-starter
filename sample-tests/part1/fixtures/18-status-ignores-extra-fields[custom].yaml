@@ -1,0 +1,11 @@
+version: 1
+router: 10.0.29.101
+method: netmiko-textfsm
+action: status
+
+desired:
+  interface:
+    name: Loopback123
+    ipv4: bad-address
+    description: should-be-ignored
+    admin_state: no-longer-checked
