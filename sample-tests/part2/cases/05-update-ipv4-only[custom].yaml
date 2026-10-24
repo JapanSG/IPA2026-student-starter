@@ -1,0 +1,10 @@
+fixture: 05-update-ipv4-only[custom].yaml
+
+expected:
+  status: ok
+  result: planned
+  operation: update
+  changes:
+    ipv4:
+      from: 192.0.2.7/32
+      to: 192.0.2.77/32

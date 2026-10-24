@@ -1,0 +1,11 @@
+desired:
+  name: Loopback888
+  ipv4: 198.51.100.88/32
+  description: state-check
+  admin_state: down
+
+current:
+  name: Loopback888
+  ipv4: 198.51.100.88/32
+  description: state-check
+  admin_state: up

@@ -1,0 +1,7 @@
+fixture: 07-name-unmanaged[custom].yaml
+
+expected:
+  status: ok
+  result: planned
+  operation: no_change
+  changes: {}

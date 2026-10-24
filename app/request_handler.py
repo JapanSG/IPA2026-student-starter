@@ -32,7 +32,6 @@ def handle_webex_request(
     Validate the envelope, then validate the attached YAML request.
     Return a response dictionary. Do not dispatch to a router.
     """
-    # TODO: implement according to the published specifications
     result = validate_webex_envelope(mentioned_people, attachment_path, bot_person_id)
     if result:
         return result

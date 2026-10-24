@@ -1,0 +1,11 @@
+desired:
+  name: Loopback999
+  ipv4: 203.0.113.99/32
+  description: keep-managed-state
+  admin_state: up
+
+current:
+  name: Loopback998
+  ipv4: 203.0.113.99/32
+  description: keep-managed-state
+  admin_state: up
