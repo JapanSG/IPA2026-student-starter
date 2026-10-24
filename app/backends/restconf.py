@@ -1,8 +1,8 @@
 import os
 import re
+from ipaddress import IPv4Interface
 
 import requests
-from ipaddress import IPv4Interface
 
 from app.planner import build_plan
 
@@ -34,6 +34,7 @@ def _get_response(url, http_get):
         url,
         auth=(os.environ["ROUTER_USERNAME"], os.environ["ROUTER_PASSWORD"]),
         headers={"Accept": "application/yang-data+json"},
+        timeout=10,
     )
 
 
@@ -94,7 +95,13 @@ def get_interface_state(router, interface_name, http_get=None):
                 "admin_state": "up" if enabled else "down",
             },
         }
-    except (KeyError, IndexError, TypeError, ValueError, requests.exceptions.JSONDecodeError):
+    except (
+        KeyError,
+        IndexError,
+        TypeError,
+        ValueError,
+        requests.exceptions.JSONDecodeError,
+    ):
         return _error("backend_failed")
 
 
@@ -112,32 +119,37 @@ def plan_interface(router, desired_interface, http_get=None):
 
 def apply_interface(router, desired_interface, http_put=None):
     """Apply complete desired interface state using RESTCONF."""
-    match = re.fullmatch(r"Loopback(\d+)", desired_interface["name"])
-    if match is None:
-        return _error("backend_failed")
+    try:
+        match = re.fullmatch(r"Loopback(\d+)", desired_interface["name"])
+        if match is None:
+            return _error("backend_failed")
 
-    ipv4 = IPv4Interface(desired_interface["ipv4"])
-    loopback_number = int(match.group(1))
-    loopback = {
-        "name": loopback_number,
-        "description": desired_interface["description"],
-        "ip": {
-            "address": {
-                "primary": {
-                    "address": str(ipv4.ip),
-                    "mask": str(ipv4.network.netmask),
+        ipv4 = IPv4Interface(desired_interface["ipv4"])
+        loopback_number = int(match.group(1))
+        loopback = {
+            "name": loopback_number,
+            "description": desired_interface["description"],
+            "ip": {
+                "address": {
+                    "primary": {
+                        "address": str(ipv4.ip),
+                        "mask": str(ipv4.network.netmask),
+                    }
                 }
-            }
-        },
-    }
-    if desired_interface["admin_state"] == "down":
-        loopback["shutdown"] = [None]
+            },
+        }
+        if desired_interface["admin_state"] == "down":
+            loopback["shutdown"] = [None]
+        elif desired_interface["admin_state"] != "up":
+            return _error("backend_failed")
 
-    url = (
-        f"https://{router}/restconf/data/"
-        f"Cisco-IOS-XE-native:native/interface/Loopback={loopback_number}"
-    )
-    payload = {"Cisco-IOS-XE-native:Loopback": loopback}
+        url = (
+            f"https://{router}/restconf/data/"
+            f"Cisco-IOS-XE-native:native/interface/Loopback={loopback_number}"
+        )
+        payload = {"Cisco-IOS-XE-native:Loopback": loopback}
+    except (KeyError, TypeError, ValueError):
+        return _error("backend_failed")
 
     try:
         if http_put is None:
@@ -146,6 +158,7 @@ def apply_interface(router, desired_interface, http_put=None):
                 json=payload,
                 auth=(os.environ["ROUTER_USERNAME"], os.environ["ROUTER_PASSWORD"]),
                 headers={"Accept": "application/yang-data+json"},
+                timeout=10,
             )
         else:
             response = http_put(url, json=payload)
