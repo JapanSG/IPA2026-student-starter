@@ -1,4 +1,5 @@
 import json
+import logging
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -50,8 +51,8 @@ def test_restconf_default_transport_uses_https_credentials_and_json_headers(
     monkeypatch,
 ):
     calls = []
-    monkeypatch.setenv("ROUTER_USERNAME", "test-user")
-    monkeypatch.setenv("ROUTER_PASSWORD", "test-password")
+    monkeypatch.setenv("ROUTER_USER", "test-user")
+    monkeypatch.setenv("ROUTER_PASS", "test-password")
 
     def fake_get(url, **kwargs):
         calls.append((url, kwargs))
@@ -74,6 +75,7 @@ def test_restconf_default_transport_uses_https_credentials_and_json_headers(
                 "auth": ("test-user", "test-password"),
                 "headers": {"Accept": "application/yang-data+json"},
                 "timeout": 10,
+                "verify": False,
             },
         )
     ]
@@ -81,8 +83,8 @@ def test_restconf_default_transport_uses_https_credentials_and_json_headers(
 
 def test_restconf_default_put_uses_native_loopback_replacement(monkeypatch):
     calls = []
-    monkeypatch.setenv("ROUTER_USERNAME", "test-user")
-    monkeypatch.setenv("ROUTER_PASSWORD", "test-password")
+    monkeypatch.setenv("ROUTER_USER", "test-user")
+    monkeypatch.setenv("ROUTER_PASS", "test-password")
 
     def fake_put(url, **kwargs):
         calls.append((url, kwargs))
@@ -97,7 +99,12 @@ def test_restconf_default_put_uses_native_loopback_replacement(monkeypatch):
         "/Cisco-IOS-XE-native:native/interface/Loopback=777"
     )
     assert calls[0][1]["auth"] == ("test-user", "test-password")
+    assert calls[0][1]["headers"] == {
+        "Accept": "application/yang-data+json",
+        "Content-Type": "application/yang-data+json",
+    }
     assert calls[0][1]["json"]["Cisco-IOS-XE-native:Loopback"]["name"] == 777
+    assert calls[0][1]["verify"] is False
 
     assert restconf.apply_interface(
         "10.0.29.101",
@@ -301,8 +308,8 @@ def test_netconf_default_transport_uses_port_830_running_config_and_credentials(
     monkeypatch,
 ):
     calls = []
-    monkeypatch.setenv("ROUTER_USERNAME", "test-user")
-    monkeypatch.setenv("ROUTER_PASSWORD", "test-password")
+    monkeypatch.setenv("ROUTER_USER", "test-user")
+    monkeypatch.setenv("ROUTER_PASS", "test-password")
 
     class FakeSession:
         def __enter__(self):
@@ -556,8 +563,8 @@ def test_netmiko_real_status_commands_use_textfsm_and_disconnect(monkeypatch):
         def send_command(self, command, **kwargs):
             calls.append((command, kwargs))
             if command.startswith("show ip interface"):
-                return []
-            return []
+                return "raw interface output"
+            return "raw descriptions output"
 
         def disconnect(self):
             calls.append(("disconnect", {}))
@@ -566,11 +573,15 @@ def test_netmiko_real_status_commands_use_textfsm_and_disconnect(monkeypatch):
         calls.append(("connect", kwargs))
         return FakeConnection()
 
-    monkeypatch.setenv("ROUTER_USERNAME", "test-user")
-    monkeypatch.setenv("ROUTER_PASSWORD", "test-password")
+    monkeypatch.setenv("ROUTER_USER", "test-user")
+    monkeypatch.setenv("ROUTER_PASS", "test-password")
     monkeypatch.setattr(
         "netmiko.ConnectHandler",
         fake_connect_handler,
+    )
+    monkeypatch.setattr(
+        "netmiko.utilities.get_structured_data",
+        lambda raw_output, **kwargs: [],
     )
     assert netmiko_textfsm.get_interface_state(
         "10.0.29.107",
@@ -589,11 +600,11 @@ def test_netmiko_real_status_commands_use_textfsm_and_disconnect(monkeypatch):
     )
     assert calls[1] == (
         "show ip interface Loopback777",
-        {"use_textfsm": True},
+        {"use_textfsm": False},
     )
     assert calls[2] == (
         "show interfaces description",
-        {"use_textfsm": True},
+        {"use_textfsm": False},
     )
     assert calls[-1][0] == "disconnect"
 
@@ -608,8 +619,8 @@ def test_netmiko_real_delete_issues_ios_no_interface_command(monkeypatch):
         def disconnect(self):
             calls.append(("disconnect", None))
 
-    monkeypatch.setenv("ROUTER_USERNAME", "test-user")
-    monkeypatch.setenv("ROUTER_PASSWORD", "test-password")
+    monkeypatch.setenv("ROUTER_USER", "test-user")
+    monkeypatch.setenv("ROUTER_PASS", "test-password")
     monkeypatch.setattr(
         "netmiko.ConnectHandler",
         lambda **kwargs: calls.append(("connect", kwargs))
@@ -629,8 +640,8 @@ def test_netmiko_real_delete_maps_command_failures(monkeypatch):
         def disconnect(self):
             pass
 
-    monkeypatch.setenv("ROUTER_USERNAME", "test-user")
-    monkeypatch.setenv("ROUTER_PASSWORD", "test-password")
+    monkeypatch.setenv("ROUTER_USER", "test-user")
+    monkeypatch.setenv("ROUTER_PASS", "test-password")
     monkeypatch.setattr(
         "netmiko.ConnectHandler",
         lambda **kwargs: FakeConnection(),
@@ -767,6 +778,60 @@ def test_netmiko_parsing_and_transport_exceptions_have_common_error_responses():
             AuthenticationException()
         ),
     ) == {"status": "error", "result": "authentication_failed"}
+
+
+def test_netmiko_textfsm_logs_command_that_failed_to_parse(monkeypatch, caplog):
+    caplog.set_level(logging.INFO)
+
+    class FakeConnection:
+        def send_command(self, command, use_textfsm):
+            return "raw router response that could not be parsed"
+
+        def disconnect(self):
+            pass
+
+    monkeypatch.setattr(netmiko_textfsm, "_connect", lambda router: FakeConnection())
+    monkeypatch.setattr(
+        "netmiko.utilities.get_structured_data",
+        lambda raw_output, **kwargs: (_raise(TextFSMError("template parse detail"))),
+    )
+
+    assert netmiko_textfsm.get_interface_state(
+        "10.0.29.104",
+        "Loopback234",
+    ) == {"status": "error", "result": "backend_failed"}
+    assert "command=show ip interface Loopback234" in caplog.text
+    assert "raw router response that could not be parsed" in caplog.text
+    assert "detail=template parse detail" in caplog.text
+
+
+def test_netmiko_treats_ios_invalid_interface_query_as_not_found(monkeypatch):
+    class FakeConnection:
+        def send_command(self, command, use_textfsm):
+            if command == "show ip interface Loopback234":
+                return (
+                    "                                    ^\n"
+                    "% Invalid input detected at '^' marker.\n"
+                )
+            return "interface descriptions"
+
+        def disconnect(self):
+            pass
+
+    monkeypatch.setattr(netmiko_textfsm, "_connect", lambda router: FakeConnection())
+    monkeypatch.setattr(
+        "netmiko.utilities.get_structured_data",
+        lambda raw_output, **kwargs: [],
+    )
+
+    assert netmiko_textfsm.get_interface_state(
+        "10.0.29.104",
+        "Loopback234",
+    ) == {
+        "status": "ok",
+        "result": "not_found",
+        "interface": None,
+    }
 
 
 def test_generic_planning_wrapper_converts_not_found_and_propagates_errors():

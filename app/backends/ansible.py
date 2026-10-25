@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import re
 import shutil
@@ -12,9 +13,11 @@ PLAYBOOK = (
     / "ansible"
     / "apply_interface.yml"
 )
+LOGGER = logging.getLogger(__name__)
 
 
 def _error(result):
+    LOGGER.warning("Ansible operation returned error result=%s", result)
     return {"status": "error", "result": result}
 
 
@@ -33,6 +36,7 @@ def _error_from_output(output):
             "unauthorized",
         )
     ):
+        LOGGER.error("Ansible playbook failed category=authentication")
         return _error("authentication_failed")
     if any(
         marker in normalized
@@ -47,13 +51,16 @@ def _error_from_output(output):
             "connection failure",
         )
     ):
+        LOGGER.error("Ansible playbook failed category=connection")
         return _error("connection_failed")
+    LOGGER.error("Ansible playbook failed category=backend")
     return _error("backend_failed")
 
 
 def _run_real_playbook(router, variables):
     executable = shutil.which("ansible-playbook")
     if executable is None:
+        LOGGER.error("Ansible executable ansible-playbook was not found")
         raise RuntimeError("ansible-playbook executable is unavailable")
 
     completed = subprocess.run(

@@ -1,0 +1,23 @@
+[
+  {
+    "name": "67070234-webhook-test",
+    "targetUrl": "https://webhook.japansg.me/webhook",
+    "resource": "messages",
+    "event": "created",
+    "filter": "mentionedPeople=me&roomId=Y2lzY29zcGFyazovL3VybjpURUFNOnVzLXdlc3QtMl9yL1JPT00vNWEyNTFkNzAtODk4YS0xMWYxLWFiZTAtMmI4NWUyM2M2MTY1"
+  },
+  {
+      "name": "67070234-webhook-main",
+      "targetUrl": "https://webhook.japansg.me/webhook",
+      "resource": "messages",
+      "event": "created",
+      "filter": "mentionedPeople=me&roomId=Y2lzY29zcGFyazovL3VybjpURUFNOnVzLXdlc3QtMl9yL1JPT00vNDg0ODNjMjAtYzIwMy0xMWYxLTk0OTktNmQ3MWQ1ZmY0NTcz"
+  },
+  {
+    "name": "67070234-webhook-personal",
+    "targetUrl": "https://webhook.japansg.me/webhook",
+    "resource": "messages",
+    "event": "created",
+    "filter": "mentionedPeople=me&roomId=Y2lzY29zcGFyazovL3VybjpURUFNOnVzLXdlc3QtMl9yL1JPT00vMWUxMTA3YjAtOGEyZC0xMWYxLWFkY2EtM2IxNzIwNjAzODhk"
+  }
+]

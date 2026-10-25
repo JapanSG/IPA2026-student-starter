@@ -1,3 +1,4 @@
+import logging
 import re
 from ipaddress import IPv4Interface
 
@@ -7,12 +8,17 @@ from app.backends.credentials import router_credentials
 from app.planner import build_plan
 
 
+LOGGER = logging.getLogger(__name__)
+
+
 def _error(result):
+    LOGGER.warning("RESTCONF operation returned error result=%s", result)
     return {"status": "error", "result": result}
 
 
 def _request_error(error):
     if isinstance(error, PermissionError):
+        LOGGER.error("RESTCONF authentication/configuration error type=%s", type(error).__name__)
         return _error("authentication_failed")
     if isinstance(
         error,
@@ -22,7 +28,9 @@ def _request_error(error):
             requests.exceptions.ConnectionError,
         ),
     ):
+        LOGGER.error("RESTCONF connection error type=%s", type(error).__name__)
         return _error("connection_failed")
+    LOGGER.error("RESTCONF request error type=%s", type(error).__name__)
     return _error("backend_failed")
 
 
@@ -35,6 +43,7 @@ def _get_response(url, http_get):
         auth=router_credentials(),
         headers={"Accept": "application/yang-data+json"},
         timeout=10,
+        verify=False,
     )
 
 
@@ -67,6 +76,7 @@ def get_interface_state(router, interface_name, http_get=None):
             "interface": None,
         }
     if response.status_code != 200:
+        LOGGER.error("RESTCONF GET returned HTTP status=%s", response.status_code)
         return _error("backend_failed")
 
     try:
@@ -101,7 +111,11 @@ def get_interface_state(router, interface_name, http_get=None):
         TypeError,
         ValueError,
         requests.exceptions.JSONDecodeError,
-    ):
+    ) as error:
+        LOGGER.error(
+            "RESTCONF response could not be normalized error_type=%s",
+            type(error).__name__,
+        )
         return _error("backend_failed")
 
 
@@ -157,8 +171,12 @@ def apply_interface(router, desired_interface, http_put=None):
                 url,
                 json=payload,
                 auth=router_credentials(),
-                headers={"Accept": "application/yang-data+json"},
+                headers={
+                    "Accept": "application/yang-data+json",
+                    "Content-Type": "application/yang-data+json",
+                },
                 timeout=10,
+                verify=False,
             )
         else:
             response = http_put(url, json=payload)
@@ -176,6 +194,7 @@ def apply_interface(router, desired_interface, http_put=None):
     if response.status_code in (401, 403):
         return _error("authentication_failed")
     if response.status_code not in (200, 201, 204):
+        LOGGER.error("RESTCONF PUT returned HTTP status=%s", response.status_code)
         return _error("backend_failed")
 
     return {"status": "ok", "result": "applied"}

@@ -1,7 +1,7 @@
 version: 1
-router: <assigned-router-ip>
+router: 10.0.29.104
 method: restconf
 action: delete
 desired:
   interface:
-    name: Loopback<student-id>
+    name: Loopback234

@@ -506,6 +506,8 @@ python scripts/check_webhook_image.py
 
 หลังเขียน webhook เสร็จ ให้เก็บ `WEBEX_BOT_TOKEN`, `ROUTER_USER`, `ROUTER_PASS` ใน environment หรือไฟล์ `.env` บนเครื่องที่รัน bot (`.env` ถูกละไว้ใน `.gitignore`) แล้วลอง `docker compose up -d webhook`, `docker compose ps` และ `curl http://127.0.0.1:8000/health` การเปิด bot จริงต้องมี token และการตั้ง webhook/tunnel ตาม `specs/integration-spec-v1.md`; Student CI ตรวจ tests, build และ HTTP ภายใน image โดยไม่ใช้ secret เหล่านี้
 
+RESTCONF ใช้ HTTPS แต่ปิดการตรวจสอบใบรับรอง TLS เพื่อให้เชื่อมต่อ router ที่ใช้ certificate ต่างกันหรือ certificate ที่ bot ไม่ได้ trust ได้ การตั้งค่านี้ทำให้การเชื่อมต่อเสี่ยงต่อการถูกดักฟังหรือแก้ไขข้อมูลระหว่างทาง ควรใช้เฉพาะเครือข่ายที่เชื่อถือได้
+
 เมื่อ push แล้วให้ดูว่า **Student CI ผ่านที่ SHA ล่าสุดของ `main`** ก่อนส่ง `verify` เพราะ `verify` ตรวจผล workflow ชื่อ `student-ci.yaml` ของ SHA นั้นโดยตรง และไม่เริ่ม GitHub Actions ใหม่ให้ หากแก้ไฟล์แล้ว push อีกครั้ง ต้องรอผลของ SHA ใหม่
 
 ## ตัวอย่างการส่งตรวจในห้อง IPA2026 Exam Room

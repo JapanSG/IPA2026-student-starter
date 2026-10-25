@@ -1,0 +1,28 @@
+{
+    "id": "Y2lzY29zcGFyazovL3VybjpURUFNOnVzLXdlc3QtMl9yL1dFQkhPT0svZjU5NDg5NDQtZTJmYS00YjZhLWE5N2UtMDQ1ODM0YzRiNzEy",
+    "name": "67070234-webhook-test",
+    "targetUrl": "https://webhook.japansg.me/webhook",
+    "resource": "messages",
+    "event": "created",
+    "filter": "mentionedPeople=Y2lzY29zcGFyazovL3VzL1BFT1BMRS9kNzFmZDg1YS02N2M4LTRjNGYtYTIxNC00Yjc2ZWFmYzQxMTU&roomId=Y2lzY29zcGFyazovL3VybjpURUFNOnVzLXdlc3QtMl9yL1JPT00vNWEyNTFkNzAtODk4YS0xMWYxLWFiZTAtMmI4NWUyM2M2MTY1",
+    "orgId": "Y2lzY29zcGFyazovL3VzL09SR0FOSVpBVElPTi9jZmZhYmNiZS1lMGNhLTRjZDItYmIzZS1iMGZmZjZmZjZmZTI",
+    "createdBy": "Y2lzY29zcGFyazovL3VzL1BFT1BMRS9kNzFmZDg1YS02N2M4LTRjNGYtYTIxNC00Yjc2ZWFmYzQxMTU",
+    "appId": "Y2lzY29zcGFyazovL3VzL0FQUExJQ0FUSU9OL0NmMzkyNWU5NDFmMzhhYTc0M2Y0MmFiNzcwZmZhZjFhNTIyMjcxZDI5OTQ4NDhjNjk2YWMwYTEwN2Q2YTg5MjI3",
+    "ownedBy": "creator",
+    "status": "active",
+    "created": "2026-10-25T08:29:06.321Z"
+}
+{
+    "id": "Y2lzY29zcGFyazovL3VybjpURUFNOnVzLXdlc3QtMl9yL1dFQkhPT0svNjkzNTlmNWMtMTE5ZC00NGUzLWFmMjQtYzUwZDQxNDYzZGM1",
+    "name": "67070234-webhook-personal",
+    "targetUrl": "https://webhook.japansg.me/webhook",
+    "resource": "messages",
+    "event": "created",
+    "filter": "mentionedPeople=Y2lzY29zcGFyazovL3VzL1BFT1BMRS9hNGNlY2Q2Zi1mNjMxLTQ3N2ItYjgwYy1iMWYzMzJiZTU0ZDg&roomId=Y2lzY29zcGFyazovL3VybjpURUFNOnVzLXdlc3QtMl9yL1JPT00vMWUxMTA3YjAtOGEyZC0xMWYxLWFkY2EtM2IxNzIwNjAzODhk",
+    "orgId": "Y2lzY29zcGFyazovL3VzL09SR0FOSVpBVElPTi9jZmZhYmNiZS1lMGNhLTRjZDItYmIzZS1iMGZmZjZmZjZmZTI",
+    "createdBy": "Y2lzY29zcGFyazovL3VzL1BFT1BMRS9hNGNlY2Q2Zi1mNjMxLTQ3N2ItYjgwYy1iMWYzMzJiZTU0ZDg",
+    "appId": "Y2lzY29zcGFyazovL3VzL0FQUExJQ0FUSU9OL0MzMmM4MDc3NDBjNmU3ZGYxMWRhZjE2ZjIyOGRmNjI4YmJjYTQ5YmE1MmZlY2JiMmM3ZDUxNWNiNGEwY2M5MWFh",
+    "ownedBy": "creator",
+    "status": "active",
+    "created": "2026-10-25T08:47:59.279Z"
+}

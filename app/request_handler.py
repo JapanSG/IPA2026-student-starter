@@ -10,7 +10,6 @@ def validate_webex_envelope(
     Validate the target bot's actual mention and YAML attachment.
     Return an error response, or None when the envelope is valid.
     """
-    # TODO: implement (Implemented)
     if (
         not isinstance(bot_person_id, str)
         or not bot_person_id

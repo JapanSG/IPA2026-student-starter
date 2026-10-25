@@ -1,3 +1,4 @@
+import logging
 import xml.etree.ElementTree as ET
 from ipaddress import IPv4Interface
 
@@ -9,9 +10,11 @@ NETCONF_NS = "urn:ietf:params:xml:ns:netconf:base:1.0"
 INTERFACES_NS = "urn:ietf:params:xml:ns:yang:ietf-interfaces"
 IP_NS = "urn:ietf:params:xml:ns:yang:ietf-ip"
 NATIVE_NS = "http://cisco.com/ns/yang/Cisco-IOS-XE-native"
+LOGGER = logging.getLogger(__name__)
 
 
 def _error(result):
+    LOGGER.warning("NETCONF operation returned error result=%s", result)
     return {"status": "error", "result": result}
 
 
@@ -47,6 +50,10 @@ def _map_exception(error):
         error,
         (PermissionError, AuthenticationError, AuthenticationException),
     ):
+        LOGGER.error(
+            "NETCONF operation failed error_type=%s mapped_result=authentication_failed",
+            type(error).__name__,
+        )
         return _error("authentication_failed")
     if isinstance(
         error,
@@ -61,7 +68,15 @@ def _map_exception(error):
             TimeoutExpiredError,
         ),
     ):
+        LOGGER.error(
+            "NETCONF operation failed error_type=%s mapped_result=connection_failed",
+            type(error).__name__,
+        )
         return _error("connection_failed")
+    LOGGER.error(
+        "NETCONF operation failed error_type=%s mapped_result=backend_failed",
+        type(error).__name__,
+    )
     if isinstance(
         error,
         (

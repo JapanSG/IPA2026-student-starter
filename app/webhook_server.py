@@ -4,9 +4,11 @@ import json
 import logging
 import os
 import tempfile
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+
+import requests
 
 from app.integration import process_request
 from app.webex_client import WEBEX_API_BASE, WebexClient
@@ -24,30 +26,46 @@ class WebexEventHandler:
 
     def handle_event(self, event):
         if not isinstance(event, dict):
+            LOGGER.debug("Ignoring webhook event with non-object payload")
             return None
         if event.get("resource") != "messages" or event.get("event") != "created":
+            LOGGER.debug("Ignoring unrelated Webex webhook event")
             return None
 
         event_data = event.get("data")
         if not isinstance(event_data, dict):
+            LOGGER.warning("Ignoring Webex message event with malformed data")
             return None
         message_id = event_data.get("id")
         if not isinstance(message_id, str) or not message_id:
+            LOGGER.warning("Ignoring Webex message event without a message ID")
             return None
         if event_data.get("personId") == self.bot_person_id:
+            LOGGER.debug("Ignoring webhook event authored by this bot")
             return None
 
-        message = self.client.get_message(message_id)
+        try:
+            message = self.client.get_message(message_id)
+        except requests.exceptions.RequestException as error:
+            LOGGER.error(
+                "Webex message lookup failed error_type=%s",
+                type(error).__name__,
+            )
+            raise
         if not isinstance(message, dict):
+            LOGGER.warning("Ignoring Webex lookup response that is not an object")
             return None
         if message.get("personId") == self.bot_person_id:
+            LOGGER.debug("Ignoring fetched message authored by this bot")
             return None
 
         room_id = message.get("roomId")
         files = message.get("files", [])
         if not isinstance(room_id, str) or not room_id or not isinstance(files, list):
+            LOGGER.warning("Ignoring fetched message with malformed room or files")
             return None
 
+        LOGGER.info("Processing Webex message attachment_count=%s", len(files))
         if len(files) > 1:
             result = {"status": "error", "result": "multiple_attachments"}
         elif not files:
@@ -59,8 +77,16 @@ class WebexEventHandler:
         else:
             file_url = files[0]
             if not isinstance(file_url, str) or not file_url:
+                LOGGER.warning("Ignoring fetched message with invalid file URL")
                 return None
-            file_content = self.client.download_file(file_url)
+            try:
+                file_content = self.client.download_file(file_url)
+            except requests.exceptions.RequestException as error:
+                LOGGER.error(
+                    "Webex attachment download failed error_type=%s",
+                    type(error).__name__,
+                )
+                raise
             with tempfile.TemporaryDirectory(prefix="ipa2026-webhook-") as temp_dir:
                 attachment_path = Path(temp_dir) / "request.yaml"
                 attachment_path.write_bytes(file_content)
@@ -70,7 +96,20 @@ class WebexEventHandler:
                     self.bot_person_id,
                 )
 
-        self.client.send_message(room_id, json.dumps(result))
+        if result.get("status") == "error":
+            LOGGER.warning(
+                "Webex message processing returned error result=%s",
+                result.get("result"),
+            )
+        try:
+            self.client.send_message(room_id, json.dumps(result))
+        except requests.exceptions.RequestException as error:
+            LOGGER.error(
+                "Webex reply failed error_type=%s",
+                type(error).__name__,
+            )
+            raise
+        LOGGER.info("Webex message processing and reply completed")
         return result
 
 
@@ -163,6 +202,15 @@ def _get_bot_person_id(client):
     return person_id
 
 
+def _log_event_failure(future: Future):
+    error = future.exception()
+    if error is not None:
+        LOGGER.error(
+            "Webhook event processing raised error_type=%s",
+            type(error).__name__,
+        )
+
+
 def main():
     logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
     client = WebexClient()
@@ -174,7 +222,8 @@ def main():
     )
 
     def submit_event(event):
-        executor.submit(event_handler.handle_event, event)
+        future = executor.submit(event_handler.handle_event, event)
+        future.add_done_callback(_log_event_failure)
 
     host = os.getenv("WEBHOOK_HOST", "0.0.0.0")
     port = int(os.getenv("WEBHOOK_PORT", "8000"))
