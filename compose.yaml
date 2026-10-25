@@ -3,8 +3,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    env_file:
-      - .env
     environment:
       WEBEX_BOT_TOKEN: ${WEBEX_BOT_TOKEN:-}
       ROUTER_USER: ${ROUTER_USER:-}
