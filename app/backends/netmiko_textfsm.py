@@ -145,8 +145,55 @@ def _real_get(router, interface_name):
                     command == f"show ip interface {interface_name}"
                     and "% Invalid input detected at '^' marker." in raw_output
                 ):
+                    brief_command = "show ip interface brief"
                     LOGGER.info(
-                        "Netmiko interface query reported interface absent "
+                        "Netmiko interface presence check started "
+                        "router=%s interface=%s command=%s",
+                        router,
+                        interface_name,
+                        brief_command,
+                    )
+                    brief_raw_output = connection.send_command(
+                        brief_command,
+                        use_textfsm=False,
+                    )
+                    LOGGER.info(
+                        "Netmiko raw command output router=%s command=%s output=%r",
+                        router,
+                        brief_command,
+                        brief_raw_output,
+                    )
+                    if re.search(
+                        r"(?im)^\s*Interface\s+IP-Address\s+OK\?\s+Method\s+"
+                        r"Status\s+Protocol\s*$",
+                        brief_raw_output,
+                    ) is None:
+                        raise NetmikoParsingException(
+                            "Unexpected output from show ip interface brief"
+                        )
+                    brief_interfaces = get_structured_data(
+                        brief_raw_output,
+                        platform="cisco_ios",
+                        command=brief_command,
+                        raise_parsing_error=True,
+                    )
+                    if not isinstance(brief_interfaces, list):
+                        raise NetmikoParsingException(
+                            "Could not parse show ip interface brief output"
+                        )
+                    interface_present = any(
+                        isinstance(record, dict)
+                        and _record_name(record.get("interface"))
+                        == _record_name(interface_name)
+                        for record in brief_interfaces
+                    )
+                    if interface_present:
+                        raise NetmikoParsingException(
+                            "Interface query was rejected but interface appears "
+                            "in show ip interface brief"
+                        )
+                    LOGGER.info(
+                        "Netmiko interface presence check confirmed absent "
                         "router=%s interface=%s",
                         router,
                         interface_name,

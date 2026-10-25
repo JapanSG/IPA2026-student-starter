@@ -4,6 +4,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import ncclient.manager
+import pytest
 import requests
 import yaml
 from ncclient.operations.rpc import RPCError
@@ -805,14 +806,22 @@ def test_netmiko_textfsm_logs_command_that_failed_to_parse(monkeypatch, caplog):
     assert "detail=template parse detail" in caplog.text
 
 
-def test_netmiko_treats_ios_invalid_interface_query_as_not_found(monkeypatch):
+def test_netmiko_confirms_absence_after_ios_rejects_interface_query(monkeypatch):
+    calls = []
+    brief_output = (
+        "Interface              IP-Address      OK? Method Status                Protocol\n"
+    )
+
     class FakeConnection:
         def send_command(self, command, use_textfsm):
+            calls.append(command)
             if command == "show ip interface Loopback234":
                 return (
                     "                                    ^\n"
                     "% Invalid input detected at '^' marker.\n"
                 )
+            if command == "show ip interface brief":
+                return brief_output
             return "interface descriptions"
 
         def disconnect(self):
@@ -821,7 +830,11 @@ def test_netmiko_treats_ios_invalid_interface_query_as_not_found(monkeypatch):
     monkeypatch.setattr(netmiko_textfsm, "_connect", lambda router: FakeConnection())
     monkeypatch.setattr(
         "netmiko.utilities.get_structured_data",
-        lambda raw_output, **kwargs: [],
+        lambda raw_output, **kwargs: (
+            []
+            if kwargs["command"] == "show ip interface brief"
+            else []
+        ),
     )
 
     assert netmiko_textfsm.get_interface_state(
@@ -832,6 +845,104 @@ def test_netmiko_treats_ios_invalid_interface_query_as_not_found(monkeypatch):
         "result": "not_found",
         "interface": None,
     }
+    assert calls == [
+        "show ip interface Loopback234",
+        "show ip interface brief",
+        "show interfaces description",
+    ]
+
+
+def test_netmiko_does_not_treat_rejected_interface_query_as_absent_if_listed(
+    monkeypatch,
+):
+    brief_output = (
+        "Interface              IP-Address      OK? Method Status                Protocol\n"
+    )
+
+    class FakeConnection:
+        def send_command(self, command, use_textfsm):
+            if command == "show ip interface Loopback234":
+                return (
+                    "                                    ^\n"
+                    "% Invalid input detected at '^' marker.\n"
+                )
+            if command == "show ip interface brief":
+                return brief_output
+            return "interface descriptions"
+
+        def disconnect(self):
+            pass
+
+    monkeypatch.setattr(netmiko_textfsm, "_connect", lambda router: FakeConnection())
+
+    def parse_output(raw_output, **kwargs):
+        if kwargs["command"] == "show ip interface brief":
+            return [{"interface": "Lo234"}]
+        return []
+
+    monkeypatch.setattr("netmiko.utilities.get_structured_data", parse_output)
+
+    assert netmiko_textfsm.get_interface_state(
+        "10.0.29.104",
+        "Loopback234",
+    ) == {"status": "error", "result": "backend_failed"}
+
+
+@pytest.mark.parametrize(
+    "brief_output,parsed_output",
+    [
+        ("Unexpected router response", []),
+        (
+            "Interface IP-Address OK? Method Status Protocol\n",
+            TextFSMError("brief output parse failed"),
+        ),
+        (
+            "Interface IP-Address OK? Method Status Protocol\n",
+            "not structured data",
+        ),
+    ],
+    ids=("malformed-header", "parser-error", "non-list-parser-result"),
+)
+def test_netmiko_invalid_presence_check_is_not_interface_absence(
+    monkeypatch,
+    brief_output,
+    parsed_output,
+):
+    calls = []
+
+    class FakeConnection:
+        def send_command(self, command, use_textfsm):
+            calls.append(("command", command))
+            if command == "show ip interface Loopback234":
+                return (
+                    "                                    ^\n"
+                    "% Invalid input detected at '^' marker.\n"
+                )
+            if command == "show ip interface brief":
+                return brief_output
+            raise AssertionError(f"Unexpected command: {command}")
+
+        def disconnect(self):
+            calls.append(("disconnect", None))
+
+    monkeypatch.setattr(netmiko_textfsm, "_connect", lambda router: FakeConnection())
+
+    def parse_output(raw_output, **kwargs):
+        if isinstance(parsed_output, Exception):
+            raise parsed_output
+        return parsed_output
+
+    monkeypatch.setattr("netmiko.utilities.get_structured_data", parse_output)
+
+    assert netmiko_textfsm.get_interface_state(
+        "10.0.29.104",
+        "Loopback234",
+    ) == {"status": "error", "result": "backend_failed"}
+    assert calls == [
+        ("command", "show ip interface Loopback234"),
+        ("command", "show ip interface brief"),
+        ("disconnect", None),
+    ]
 
 
 def test_generic_planning_wrapper_converts_not_found_and_propagates_errors():
