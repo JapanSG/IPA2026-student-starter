@@ -5,8 +5,8 @@
   connection: ansible.netcommon.network_cli
   vars:
     ansible_network_os: cisco.ios.ios
-    ansible_user: "{{ lookup('env', 'ROUTER_USERNAME') }}"
-    ansible_password: "{{ lookup('env', 'ROUTER_PASSWORD') }}"
+    ansible_user: "{{ lookup('env', 'ROUTER_USER') or lookup('env', 'ROUTER_USERNAME') }}"
+    ansible_password: "{{ lookup('env', 'ROUTER_PASS') or lookup('env', 'ROUTER_PASSWORD') }}"
   tasks:
     - name: Replace the Loopback interface configuration
       cisco.ios.ios_config:

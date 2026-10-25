@@ -1,9 +1,9 @@
-import os
 import re
 from ipaddress import IPv4Interface
 
 import requests
 
+from app.backends.credentials import router_credentials
 from app.planner import build_plan
 
 
@@ -32,7 +32,7 @@ def _get_response(url, http_get):
 
     return requests.get(
         url,
-        auth=(os.environ["ROUTER_USERNAME"], os.environ["ROUTER_PASSWORD"]),
+        auth=router_credentials(),
         headers={"Accept": "application/yang-data+json"},
         timeout=10,
     )
@@ -156,7 +156,7 @@ def apply_interface(router, desired_interface, http_put=None):
             response = requests.put(
                 url,
                 json=payload,
-                auth=(os.environ["ROUTER_USERNAME"], os.environ["ROUTER_PASSWORD"]),
+                auth=router_credentials(),
                 headers={"Accept": "application/yang-data+json"},
                 timeout=10,
             )

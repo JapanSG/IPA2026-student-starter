@@ -1,6 +1,7 @@
-import os
 import re
 from ipaddress import ip_interface
+
+from app.backends.credentials import router_credentials
 
 
 def _error(result):
@@ -80,11 +81,12 @@ def _handled_errors():
 def _connect(router):
     from netmiko import ConnectHandler
 
+    username, password = router_credentials()
     return ConnectHandler(
         device_type="cisco_ios",
         host=router,
-        username=os.environ["ROUTER_USERNAME"],
-        password=os.environ["ROUTER_PASSWORD"],
+        username=username,
+        password=password,
         timeout=10,
     )
 

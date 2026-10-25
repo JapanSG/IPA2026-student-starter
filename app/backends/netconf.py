@@ -1,7 +1,7 @@
-import os
 import xml.etree.ElementTree as ET
 from ipaddress import IPv4Interface
 
+from app.backends.credentials import router_credentials
 from app.planner import build_plan
 
 
@@ -18,11 +18,12 @@ def _error(result):
 def _connection(router):
     from ncclient import manager
 
+    username, password = router_credentials()
     return manager.connect(
         host=router,
         port=830,
-        username=os.environ["ROUTER_USERNAME"],
-        password=os.environ["ROUTER_PASSWORD"],
+        username=username,
+        password=password,
         hostkey_verify=False,
         device_params={"name": "iosxe"},
         allow_agent=False,

@@ -1,21 +1,13 @@
 import yaml
 
 
-def validate_request(data):
+def validate_request_data(request):
     """
-    Validate one IPA2026 desired-state request.
+    Validate one already-parsed IPA2026 desired-state request.
 
     Return a response dictionary according to
     specs/response-spec-v1.md.
     """
-    if not isinstance(data, str):
-        return {"status": "error", "result": "invalid_yaml"}
-
-    try:
-        request = yaml.safe_load(data)
-    except yaml.YAMLError:
-        return {"status": "error", "result": "invalid_yaml"}
-
     if not isinstance(request, dict):
         return {"status": "error", "result": "invalid_yaml"}
 
@@ -76,6 +68,19 @@ def validate_request(data):
             return {"status": "error", "result": "invalid_admin_state"}
 
     return {"status": "ok", "result": "accepted"}
+
+
+def validate_request(data):
+    """Parse and validate one IPA2026 desired-state YAML request."""
+    if not isinstance(data, str):
+        return {"status": "error", "result": "invalid_yaml"}
+
+    try:
+        request = yaml.safe_load(data)
+    except yaml.YAMLError:
+        return {"status": "error", "result": "invalid_yaml"}
+
+    return validate_request_data(request)
 
 
 def process_request_file(path):
